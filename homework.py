@@ -32,13 +32,13 @@ logger.addHandler(handler)
 
 
 def check_tokens():
-    """Проверка токенов окружения"""
+    """Проверка токенов окружения."""
     logging.info('Проверяем доступность переменных окружения.')
     return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
 def send_message(bot, message):
-    """Бот отправляет сообщения"""
+    """Бот отправляет сообщения."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug('сообщение успешно отправлено')
@@ -47,7 +47,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    """запрос к единственному эндпоинту"""
+    """запрос к единственному эндпоинту."""
     timestamp = int(time.time())
     payload = {'from_date': timestamp}
     try:
@@ -62,7 +62,7 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """проверяет ответ API на соответствие документации"""
+    """проверяет ответ API на соответствие документации."""
     if type(response) != dict:
         raise TypeError('получен список вместо ожидаемого словаря')
     if 'homeworks' not in response:
@@ -74,7 +74,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """извлекает из информации статус работы"""
+    """извлекает из информации статус работы."""
     homework_name = homework.get('homework_name')
     status = homework.get('status')
     if status not in HOMEWORK_VERDICTS:
