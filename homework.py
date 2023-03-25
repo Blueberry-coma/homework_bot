@@ -3,6 +3,7 @@ import requests
 import os
 import logging
 import time
+import sys
 from dotenv import load_dotenv
 from http import HTTPStatus
 
@@ -52,22 +53,24 @@ def get_api_answer(timestamp):
     payload = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-    except requests.exceptions.RequestException as error:
-        send_report = (f'Error {error}')
-        raise error(send_report)
+    except requests.exceptions.RequestException:
+        # правильно понимаю, что RequestException это базовый класс?
+        # не совсем понятно,
+        # почему в тестах требуют его именно как базовый класс обрабатывать?
+        send_report = ('Error Request exception')
+        raise ConnectionError(send_report)
     if response.status_code != HTTPStatus.OK:
-        logging.error('Код ответ от сервера API не 200')
         raise ValueError('Код ответ от сервера API не 200')
     return response.json()
 
 
 def check_response(response):
     """проверяет ответ API на соответствие документации."""
-    if type(response) != dict:
+    if not isinstance(response, dict):
         raise TypeError('получен список вместо ожидаемого словаря')
     if 'homeworks' not in response:
         raise KeyError('в ответе API домашки нет ключа')
-    if type(response['homeworks']) != list:
+    if not isinstance(response['homeworks'], list):
         raise TypeError('данные приходят не в виде списка')
     homeworks = response.get('homeworks')
     return homeworks
@@ -78,10 +81,8 @@ def parse_status(homework):
     homework_name = homework.get('homework_name')
     status = homework.get('status')
     if status not in HOMEWORK_VERDICTS:
-        logging.error('unknown status')
         raise KeyError('unknown status')
     if homework_name is None:
-        logging.error('Unknown name')
         raise KeyError('Unknown name')
     verdict = HOMEWORK_VERDICTS[status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -90,26 +91,35 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
-        logging.critical('Отсутсвуют переменные окружения')
-        raise KeyError('Отсутсвуют переменные окружения')
+        token_message = 'Отсутсвуют переменные окружения'
+        logging.critical(token_message)
+        sys.exit(token_message)
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
+    current_status = []
+
     while True:
         try:
             response = get_api_answer(timestamp)
             timestamp = response.get('current_date')
             homeworks = check_response(response)
-            for homework in homeworks:
-                homework_status = parse_status(homework)
-                send_message(bot, homework_status)
+            if len(homeworks) > 0:
+                homework_status = parse_status(homeworks[0])
+                if current_status != homework_status:
+                    send_message(bot, homework_status)
+                    current_status = homework_status
+                else:
+                    logging.info('пустой список')
             else:
                 logging.debug('статус работы не изменился')
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
+            logging.error(message)
+            # Не совсем понимаю, правильно здесь один раз logging сделать?
+            # Или правильно отдельно expect и logging для каждого прописать?
             send_message(bot, message)
-            raise error
         finally:
             time.sleep(RETRY_PERIOD)
 
