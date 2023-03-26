@@ -97,14 +97,14 @@ def main():
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    current_status = []
+    current_status = None
 
     while True:
         try:
             response = get_api_answer(timestamp)
             timestamp = response.get('current_date')
             homeworks = check_response(response)
-            if len(homeworks) > 0:
+            if homeworks:
                 homework_status = parse_status(homeworks[0])
                 if current_status != homework_status:
                     send_message(bot, homework_status)
